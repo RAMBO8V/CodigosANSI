@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Explorador Interactivo de Códigos ANSI</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chosen Palette: Slate Gray and Neutral Tones --><!-- Application Structure Plan: A single-page tool with two main interactive sections. The first is an "Escape Code Playground" where users can select styles and colors from controls and see a live preview and the corresponding code, making learning active instead of passive. The second is a "Dynamic ASCII Explorer" grid that shows character details on hover. This structure transforms a static reference document into a hands-on learning tool, which is more effective for the target developer audience. --><!-- Visualization & Content Choices: Report's SGR tables -> Interactive Playground -> Goal: Active learning -> User selects options, JS updates preview text and generates code snippet -> Justification: Replaces manual lookup and memorization with experimentation. Added 256-color input. Replaced manual RGB text fields with an interactive HSV Color Picker (using Canvas for visual selection), drastically improving the user experience for 24-bit color selection. Implemented dual language code generation (Java/Python) and fixed the clipboard function. Replaced the "Default" color box with an "X" icon for clearing color selections. Report's ASCII table -> Dynamic Grid -> Goal: Easy reference -> JS generates a grid, user hovers to see details (decimal, hex) -> Justification: Improves scannability and provides info-on-demand. CONFIRMING NO SVG/Mermaid. --><!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. --><style>
+    <style>
         body {
             font-family: 'Inter', sans-serif;
         }
@@ -34,6 +34,9 @@
         /* Custom styling for inputs in dark mode */
         input[type="number"] {
             -moz-appearance: textfield;
+            /* Estilo para inputs RGB editables */
+            background-color: #1f2937 !important; /* slate-800 o similar */
+            border: 1px solid #475569 !important; /* slate-600 */
         }
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
@@ -42,22 +45,26 @@
         }
         /* Style for the 'X' clear button */
         .clear-color-x {
-            background-color: #333; /* Darker background for contrast */
-            border: 2px solid #ef4444; /* Red border */
-            color: #ef4444; /* Red 'X' */
+            /* Reduced size and adjusted border/color for 'X' button to look like a control */
+            background-color: #333;
+            border: 2px solid #ef4444; 
+            color: #ef4444;
             font-weight: bold;
-            font-size: 1.25rem; /* Larger 'X' */
+            font-size: 1rem; /* Smaller X */
+            width: 30px; /* Specific width */
+            height: 30px; /* Specific height */
             display: flex;
             align-items: center;
             justify-content: center;
-            line-height: 1; /* Adjust line height for perfect centering */
+            line-height: 1;
+            margin-left: auto; /* Push to the right */
         }
         .clear-color-x:hover {
             background-color: #444;
             transform: scale(1.1);
         }
         .clear-color-x.selected {
-             box-shadow: 0 0 0 3px #3b82f6; /* Ring-blue-500 */
+             box-shadow: 0 0 0 3px #3b82f6;
              transform: scale(1.05);
         }
         
@@ -109,16 +116,16 @@
         </header>
 
         <main>
-            <!-- Sección de Playground de Códigos de Escape --><section id="playground" class="bg-slate-800 rounded-xl shadow-lg p-6 md:p-8 mb-12">
+            <section id="playground" class="bg-slate-800 rounded-xl shadow-lg p-6 md:p-8 mb-12">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <!-- Panel de Controles --><div>
+                    <div>
                         <h2 class="text-2xl font-bold text-white mb-6">Playground de Códigos de Escape</h2>
                         <p class="text-slate-400 mb-6">
                             Selecciona diferentes estilos y colores para ver el resultado en tiempo real. El código correspondiente se generará automáticamente para que puedas copiarlo y usarlo en tus proyectos de terminal.
                         </p>
                         
                         <div class="space-y-6">
-                            <!-- Estilos de Texto --><div>
+                            <div>
                                 <label class="control-label">Estilo de Texto</label>
                                 <div id="style-controls" class="flex flex-wrap gap-2">
                                     <button data-style="1" class="px-3 py-1.5 text-sm rounded-md bg-slate-700 hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Negrita (1)</button>
@@ -128,14 +135,17 @@
                                 </div>
                             </div>
                             
-                            <!-- Color de Texto --><div class="space-y-4">
+                            <div class="space-y-4">
                                 <label class="control-label">Color de Texto (Primer Plano)</label>
                                 <div class="bg-slate-700 p-3 rounded-lg">
                                     <h4 class="text-sm font-semibold mb-2 text-slate-300">Modo Básico (16 colores)</h4>
-                                    <div id="fg-colors-basic" class="grid grid-cols-5 md:grid-cols-9 gap-2"></div>
+                                    <div id="fg-colors-basic" class="grid grid-cols-8 gap-2"></div>
+                                    <div class="flex mt-2">
+                                         <div id="fg-clear-basic-container"></div>
+                                    </div>
                                 </div>
 
-                                <!-- Modo 256 --><div class="bg-slate-700 p-3 rounded-lg">
+                                <div class="bg-slate-700 p-3 rounded-lg">
                                     <h4 class="text-sm font-semibold mb-2 text-slate-300">Modo 256 Colores (Índice 0-255)</h4>
                                     <div class="flex space-x-2">
                                         <input type="number" id="fg-256-input" min="0" max="255" placeholder="0-255" class="w-full px-3 py-1.5 text-sm rounded-md bg-slate-900 border border-slate-700 focus:ring-blue-500 focus:border-blue-500 text-white">
@@ -143,7 +153,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Nuevo Modo RGB (Color Picker) --><div class="bg-slate-700 p-3 rounded-lg">
+                                <div class="bg-slate-700 p-3 rounded-lg">
                                     <h4 class="text-sm font-semibold mb-2 text-slate-300">Modo True Color (RGB 24-bit)</h4>
                                     
                                     <div class="color-picker-container mb-2">
@@ -158,9 +168,9 @@
                                         <div class="flex flex-col justify-between ml-4">
                                             <div id="fg-rgb-preview" class="h-10 w-10 rounded-lg border-2 border-slate-600 mb-2"></div>
                                             <div class="text-xs">
-                                                <div class="flex justify-between">R: <input type="number" id="fg-rgb-r" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center" readonly></div>
-                                                <div class="flex justify-between">G: <input type="number" id="fg-rgb-g" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center" readonly></div>
-                                                <div class="flex justify-between">B: <input type="number" id="fg-rgb-b" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center" readonly></div>
+                                                <div class="flex justify-between">R: <input type="number" id="fg-rgb-r" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
+                                                <div class="flex justify-between">G: <input type="number" id="fg-rgb-g" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
+                                                <div class="flex justify-between">B: <input type="number" id="fg-rgb-b" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -168,14 +178,17 @@
                                 </div>
                             </div>
                             
-                            <!-- Color de Fondo --><div class="space-y-4">
+                            <div class="space-y-4">
                                 <label class="control-label">Color de Fondo</label>
                                 <div class="bg-slate-700 p-3 rounded-lg">
                                     <h4 class="text-sm font-semibold mb-2 text-slate-300">Modo Básico (16 colores)</h4>
-                                    <div id="bg-colors-basic" class="grid grid-cols-5 md:grid-cols-9 gap-2"></div>
+                                    <div id="bg-colors-basic" class="grid grid-cols-8 gap-2"></div>
+                                    <div class="flex mt-2">
+                                         <div id="bg-clear-basic-container"></div>
+                                    </div>
                                 </div>
 
-                                <!-- Modo 256 --><div class="bg-slate-700 p-3 rounded-lg">
+                                <div class="bg-slate-700 p-3 rounded-lg">
                                     <h4 class="text-sm font-semibold mb-2 text-slate-300">Modo 256 Colores (Índice 0-255)</h4>
                                     <div class="flex space-x-2">
                                         <input type="number" id="bg-256-input" min="0" max="255" placeholder="0-255" class="w-full px-3 py-1.5 text-sm rounded-md bg-slate-900 border border-slate-700 focus:ring-blue-500 focus:border-blue-500 text-white">
@@ -183,7 +196,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Nuevo Modo RGB (Color Picker) --><div class="bg-slate-700 p-3 rounded-lg">
+                                <div class="bg-slate-700 p-3 rounded-lg">
                                     <h4 class="text-sm font-semibold mb-2 text-slate-300">Modo True Color (RGB 24-bit)</h4>
                                     
                                     <div class="color-picker-container mb-2">
@@ -198,9 +211,9 @@
                                         <div class="flex flex-col justify-between ml-4">
                                             <div id="bg-rgb-preview" class="h-10 w-10 rounded-lg border-2 border-slate-600 mb-2"></div>
                                             <div class="text-xs">
-                                                <div class="flex justify-between">R: <input type="number" id="bg-rgb-r" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center" readonly></div>
-                                                <div class="flex justify-between">G: <input type="number" id="bg-rgb-g" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center" readonly></div>
-                                                <div class="flex justify-between">B: <input type="number" id="bg-rgb-b" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center" readonly></div>
+                                                <div class="flex justify-between">R: <input type="number" id="bg-rgb-r" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
+                                                <div class="flex justify-between">G: <input type="number" id="bg-rgb-g" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
+                                                <div class="flex justify-between">B: <input type="number" id="bg-rgb-b" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -210,7 +223,7 @@
                         </div>
                     </div>
 
-                    <!-- Panel de Visualización --><div class="flex flex-col">
+                    <div class="flex flex-col">
                         <div>
                             <h3 class="text-lg font-semibold text-white mb-2">Vista Previa</h3>
                             <div class="bg-black rounded-lg p-6 min-h-[120px] flex items-center justify-center">
@@ -220,7 +233,7 @@
                         <div class="mt-6 flex-grow flex flex-col">
                            <h3 class="text-lg font-semibold text-white mb-2">Código Generado</h3>
                             
-                            <!-- Selector de Lenguaje --><div id="language-selector" class="flex mb-3 space-x-2 p-1 bg-slate-700 rounded-lg">
+                            <div id="language-selector" class="flex mb-3 space-x-2 p-1 bg-slate-700 rounded-lg">
                                 <button data-lang="java" class="w-1/2 text-sm px-3 py-1 rounded-md bg-blue-600">Java</button>
                                 <button data-lang="python" class="w-1/2 text-sm px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600">Python</button>
                             </div>
@@ -228,20 +241,20 @@
                             <div class="bg-black rounded-lg p-4 flex-grow relative">
                                 <pre><code id="generated-code-java" class="font-mono text-sm whitespace-pre-wrap"></code></pre>
                                 <pre><code id="generated-code-python" class="font-mono text-sm whitespace-pre-wrap hidden"></code></pre>
-                                <button id="copy-button" class="absolute top-3 right-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-2 py-1 rounded-md">Copiar</button>
+                                <button id="copy-button" class="mt-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-2 py-1 rounded-md float-right">Copiar</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Sección Explorador ASCII --><section id="ascii-explorer" class="bg-slate-800 rounded-xl shadow-lg p-6 md:p-8">
+            <section id="ascii-explorer" class="bg-slate-800 rounded-xl shadow-lg p-6 md:p-8">
                 <h2 class="text-2xl font-bold text-white mb-4 text-center">Explorador de Caracteres ASCII</h2>
                 <p class="text-slate-400 mb-8 text-center max-w-3xl mx-auto">
                     Pasa el cursor sobre cualquier carácter para ver sus códigos decimal, hexadecimal y su descripción. Los primeros 32 caracteres son de control y no son visibles.
                 </p>
                 <div id="ascii-grid" class="grid grid-cols-8 sm:grid-cols-12 md:grid-cols-16 gap-1 font-mono text-center">
-                    <!-- El grid se llenará dinámicamente con JavaScript --></div>
+                    </div>
             </section>
 
         </main>
@@ -254,17 +267,20 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- Estado de la aplicación ---
+            // CORRECCIÓN: Inicializar RGB a un gris neutro para evitar problemas con hsvToRgb(0, 0, 0)
             const state = {
                 styles: new Set(),
-                fg: { mode: 'basic', params: null, picker: { h: 0, s: 1, v: 1, r: 255, g: 0, b: 0 } },
-                bg: { mode: 'basic', params: null, picker: { h: 0, s: 1, v: 1, r: 255, g: 0, b: 0 } },
+                fg: { mode: 'basic', params: null, picker: { h: 0, s: 0, v: 0.5, r: 128, g: 128, b: 128 } },
+                bg: { mode: 'basic', params: null, picker: { h: 0, s: 0, v: 0.5, r: 128, g: 128, b: 128 } },
                 language: 'java'
             };
 
             // --- Datos ---
             const colors = [
                 { name: 'Negro', code: 30, bgCode: 40, hex: '#000000' }, { name: 'Rojo', code: 31, bgCode: 41, hex: '#AA0000' },
-                { name: 'Verde', code: 32, bgCode: 42, hex: '#00AA00' }, { name: 'Amarillo', code: 33, bgCode: 43, hex: '#AA5500' },
+                { name: 'Verde', code: 32, bgCode: 42, hex: '#00AA00' }, 
+                // Color Amarillo ajustado a un tono más oscuro (#CCCC00)
+                { name: 'Amarillo', code: 33, bgCode: 43, hex: '#CCCC00' }, 
                 { name: 'Azul', code: 34, bgCode: 44, hex: '#0000AA' }, { name: 'Magenta', code: 35, bgCode: 45, hex: '#AA00AA' },
                 { name: 'Cian', code: 36, bgCode: 46, hex: '#00AAAA' }, { name: 'Blanco', code: 37, bgCode: 47, hex: '#AAAAAA' }
             ];
@@ -285,6 +301,10 @@
             const asciiGrid = document.getElementById('ascii-grid');
             const languageSelector = document.getElementById('language-selector');
 
+            // NUEVOS CONTENEDORES DE 'X'
+            const fgClearContainer = document.getElementById('fg-clear-basic-container');
+            const bgClearContainer = document.getElementById('bg-clear-basic-container');
+            
             // Selectores de códigos
             const generatedCodeJava = document.getElementById('generated-code-java');
             const generatedCodePython = document.getElementById('generated-code-python');
@@ -347,6 +367,35 @@
                 };
             }
 
+            // Función para convertir RGB (0-255) a HSV (0-360, 0-1, 0-1)
+            function rgbToHsv(r, g, b) {
+                r /= 255; g /= 255; b /= 255;
+
+                const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, v = max;
+
+                const d = max - min;
+                s = max === 0 ? 0 : d / max;
+
+                if (max === min) {
+                    h = 0; // achromatic
+                } else {
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+
+                return {
+                    h: h * 360,
+                    s: s,
+                    v: v
+                };
+            }
+
+
             /**
              * Dibuja el gradiente de tono (Hue) en el canvas lateral
              */
@@ -405,44 +454,75 @@
                 const imageData = ctx.getImageData(x, y, 1, 1).data;
                 return { r: imageData[0], g: imageData[1], b: imageData[2] };
             }
+            
+            /**
+             * Actualiza el selector de color y el estado después de un cambio de RGB manual.
+             */
+            function updateColorFromRgbInput(type) {
+                const currentSelection = type === 'fg' ? state.fg.picker : state.bg.picker;
+                const rEl = type === 'fg' ? fgRgbR : bgRgbR;
+                const gEl = type === 'fg' ? fgRgbG : bgRgbG;
+                const bEl = type === 'fg' ? fgRgbB : bgRgbB;
+                const colorCanvas = type === 'fg' ? fgColorCanvas : bgColorCanvas;
+                const hueCanvas = type === 'fg' ? fgHueCanvas : bgHueCanvas;
+                const colorSelector = type === 'fg' ? fgColorSelector : bgColorSelector;
+                const hueSelector = type === 'fg' ? fgHueSelector : bgHueSelector;
+
+                let r = parseInt(rEl.value) || 0;
+                let g = parseInt(gEl.value) || 0;
+                let b = parseInt(bEl.value) || 0;
+                
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+
+                rEl.value = r; gEl.value = g; bEl.value = b;
+
+                const hsv = rgbToHsv(r, g, b);
+
+                // 1. Actualiza el estado
+                currentSelection.r = r;
+                currentSelection.g = g;
+                currentSelection.b = b;
+                currentSelection.h = hsv.h;
+                currentSelection.s = hsv.s;
+                currentSelection.v = hsv.v;
+
+                // 2. Redibuja el campo de color (S/V) basado en el nuevo H
+                drawColorField(colorCanvas, hsv.h);
+
+                // 3. Mueve los selectores
+                const colorX = (1 - hsv.s) * colorCanvas.width;
+                const colorY = (1 - hsv.v) * colorCanvas.height;
+                const hueY = (hsv.h / 360) * hueCanvas.height;
+                
+                colorSelector.style.left = `${colorX}px`;
+                colorSelector.style.top = `${colorY}px`;
+                colorSelector.classList.remove('hidden');
+
+                hueSelector.style.top = `${hueY}px`;
+                hueSelector.classList.remove('hidden');
+
+                // 4. Actualiza la vista previa
+                updateRgbInputs(type, r, g, b);
+            }
 
             /**
              * Procesa la interacción en el selector de color
              */
             function handleColorSelection(e, type) {
-                const canvas = type === 'fg' ? fgColorCanvas : bgHueCanvas;
-                const rect = canvas.getBoundingClientRect();
-                let x = e.clientX - rect.left;
-                let y = e.clientY - rect.top;
-
-                // Clamp values
-                x = Math.max(0, Math.min(x, canvas.width));
-                y = Math.max(0, Math.min(y, canvas.height));
-
                 const currentSelection = type === 'fg' ? state.fg.picker : state.bg.picker;
                 
-                // 1. Si el evento es en el campo de color (S y V)
-                if (e.target.id.includes('color-canvas')) {
-                    const selector = type === 'fg' ? fgColorSelector : bgColorSelector;
-                    const rgb = getColorFromCanvas(canvas, x, y);
-
-                    // Actualiza el estado con S y V (manteniendo H)
-                    currentSelection.s = 1 - (x / canvas.width);
-                    currentSelection.v = 1 - (y / canvas.height);
-                    currentSelection.r = rgb.r;
-                    currentSelection.g = rgb.g;
-                    currentSelection.b = rgb.b;
-                    
-                    // Mueve el selector de S/V
-                    selector.style.left = `${x}px`;
-                    selector.style.top = `${y}px`;
-                    selector.classList.remove('hidden');
-
-                // 2. Si el evento es en el slider de tono (H)
-                } else if (e.target.id.includes('hue-canvas')) {
+                // 1. Si el evento es en el slider de tono (H)
+                if (e.target.id.includes('hue-canvas')) {
                     const hueCanvas = type === 'fg' ? fgHueCanvas : bgHueCanvas;
-                    const colorCanvas = type === 'fg' ? fgColorCanvas : bgHueCanvas;
+                    const colorCanvas = type === 'fg' ? fgColorCanvas : bgColorCanvas;
                     const hueSelector = type === 'fg' ? fgHueSelector : bgHueSelector;
+                    const colorSelector = type === 'fg' ? fgColorSelector : bgColorSelector;
+
+                    const rect = hueCanvas.getBoundingClientRect();
+                    let y = e.clientY - rect.top;
+                    y = Math.max(0, Math.min(y, hueCanvas.height));
 
                     // Calcula H (360 * posición vertical)
                     currentSelection.h = (y / hueCanvas.height) * 360;
@@ -454,21 +534,54 @@
                     hueSelector.style.top = `${y}px`;
                     hueSelector.classList.remove('hidden');
 
-                    // Recalcula RGB y actualiza el selector de S/V (si estaba visible)
-                    const colorX = parseFloat(selector.style.left) || 0;
-                    const colorY = parseFloat(selector.style.top) || 0;
-                    if (!selector.classList.contains('hidden')) {
-                        const rgb = getColorFromCanvas(colorCanvas, colorX, colorY);
-                        currentSelection.r = rgb.r;
-                        currentSelection.g = rgb.g;
-                        currentSelection.b = rgb.b;
+                    // Si el selector S/V está visible, recalcular RGB a partir del nuevo H, S, V
+                    if (!colorSelector.classList.contains('hidden')) {
+                         const colorX = parseFloat(colorSelector.style.left);
+                         const colorY = parseFloat(colorSelector.style.top);
+                         // Recalcular S y V (posición en el nuevo canvas de color)
+                         currentSelection.s = 1 - (colorX / colorCanvas.width);
+                         currentSelection.v = 1 - (colorY / colorCanvas.height);
+
+                         const rgb = hsvToRgb(currentSelection.h / 360, currentSelection.s, currentSelection.v);
+                         currentSelection.r = rgb.r;
+                         currentSelection.g = rgb.g;
+                         currentSelection.b = rgb.b;
+
                     } else {
                         // Si no hay selector S/V activo, forzar a la esquina superior derecha (S=1, V=1)
+                        currentSelection.s = 1; currentSelection.v = 1;
                         const rgb = hsvToRgb(currentSelection.h / 360, 1, 1);
                         currentSelection.r = rgb.r;
                         currentSelection.g = rgb.g;
                         currentSelection.b = rgb.b;
                     }
+
+                // 2. Si el evento es en el campo de color (S y V)
+                } else if (e.target.id.includes('color-canvas')) {
+                    const colorCanvas = type === 'fg' ? fgColorCanvas : bgColorCanvas;
+                    const selector = type === 'fg' ? fgColorSelector : bgColorSelector;
+
+                    const rect = colorCanvas.getBoundingClientRect();
+                    let x = e.clientX - rect.left;
+                    let y = e.clientY - rect.top;
+
+                    x = Math.max(0, Math.min(x, colorCanvas.width));
+                    y = Math.max(0, Math.min(y, colorCanvas.height));
+                    
+                    const rgb = getColorFromCanvas(colorCanvas, x, y);
+
+                    // Actualiza el estado con S y V (manteniendo H)
+                    currentSelection.s = 1 - (x / colorCanvas.width);
+                    currentSelection.v = 1 - (y / colorCanvas.height);
+                    currentSelection.r = rgb.r;
+                    currentSelection.g = rgb.g;
+                    currentSelection.b = rgb.b;
+                    
+                    // Mueve el selector de S/V
+                    selector.style.left = `${x}px`;
+                    selector.style.top = `${y}px`;
+                    selector.classList.remove('hidden');
+
                 }
                 
                 // Actualiza los campos de texto y la vista previa del color seleccionado
@@ -479,15 +592,16 @@
              * Dibuja los selectores de color RGB iniciales
              */
             function initializeColorPickers(type) {
-                const colorCanvas = type === 'fg' ? fgColorCanvas : bgHueCanvas;
+                const colorCanvas = type === 'fg' ? fgColorCanvas : bgColorCanvas;
                 const hueCanvas = type === 'fg' ? fgHueCanvas : bgHueCanvas;
+                const currentPicker = state[type].picker;
                 
                 // Establecer dimensiones
                 colorCanvas.width = 150; colorCanvas.height = 150;
                 hueCanvas.width = 25; hueCanvas.height = 150;
 
                 drawHue(hueCanvas);
-                drawColorField(colorCanvas, state[type].picker.h);
+                drawColorField(colorCanvas, currentPicker.h);
                 
                 // Configurar eventos de click/drag
                 let isDragging = false;
@@ -514,7 +628,22 @@
                 document.addEventListener('mouseup', stopDrag);
                 
                 // Inicializar la vista previa y los inputs
-                updateRgbInputs(type, state[type].picker.r, state[type].picker.g, state[type].picker.b);
+                updateRgbInputs(type, currentPicker.r, currentPicker.g, currentPicker.b);
+
+                // Configurar eventos de input para edición manual
+                const rEl = type === 'fg' ? fgRgbR : bgRgbR;
+                const gEl = type === 'fg' ? fgRgbG : bgRgbG;
+                const bEl = type === 'fg' ? fgRgbB : bgRgbB;
+
+                [rEl, gEl, bEl].forEach(el => {
+                    el.addEventListener('input', () => {
+                         // Llamar a una función que recalcule HSV y mueva los selectores
+                        updateColorFromRgbInput(type);
+                    });
+                });
+                
+                // Inicializar los selectores de posición
+                updateColorFromRgbInput(type);
             }
             
             /**
@@ -593,7 +722,8 @@
                 if (currentSelected) {
                     currentSelected.classList.remove('selected');
                 }
-                const clearXButton = container.querySelector('.clear-color-x');
+                // Cambiar la selección del botón 'X'
+                const clearXButton = type === 'fg' ? fgClearContainer.querySelector('.clear-color-x') : bgClearContainer.querySelector('.clear-color-x');
                 if (clearXButton) {
                     clearXButton.classList.remove('selected');
                 }
@@ -618,13 +748,14 @@
                 });
             }
 
-            function createColorPalette(container, type) {
+            function createColorPalette(container, clearContainer, type) {
                 const colorMap = type === 'fg' ? allColors : allColors.map(c => ({...c, code: c.bgCode, hex: c.hex}));
                 
                 colorMap.forEach(color => {
                     const code = color.code;
                     const box = document.createElement('div');
                     
+                    // Asegurarse de que las cajas de color ocupen el ancho completo de la cuadrícula
                     box.className = `color-box w-full h-8 rounded-md border-2 border-transparent`;
                     box.style.backgroundColor = color.hex;
                     box.dataset.code = code;
@@ -645,10 +776,16 @@
                         const isCurrentlySelected = box.classList.contains('selected');
                         
                         if (isCurrentlySelected) {
+                            // Si ya está seleccionado, limpiar (usar código 39/49)
                             box.classList.remove('selected');
                             if (type === 'fg') state.fg.params = '39';
                             if (type === 'bg') state.bg.params = '49';
+                            // Seleccionar el botón 'X'
+                            const clearXButton = clearContainer.querySelector('.clear-color-x');
+                            if (clearXButton) clearXButton.classList.add('selected');
+
                         } else {
+                            // Seleccionar nuevo color
                             box.classList.add('selected');
                             if (type === 'fg') state.fg = { ...state.fg, mode: 'basic', params: code.toString() };
                             if (type === 'bg') state.bg = { ...state.bg, mode: 'basic', params: code.toString() };
@@ -659,9 +796,9 @@
                     container.appendChild(box);
                 });
 
-                // Add the 'X' button for clearing colors
+                // Add the 'X' button for clearing colors (MOVIDO A SU PROPIO CONTENEDOR)
                 const clearXButton = document.createElement('div');
-                clearXButton.className = `color-box w-full h-8 rounded-md clear-color-x`;
+                clearXButton.className = `color-box rounded-md clear-color-x`;
                 clearXButton.textContent = 'X';
                 clearXButton.title = 'Quitar Color';
                 clearXButton.dataset.code = type === 'fg' ? '39' : '49';
@@ -683,7 +820,7 @@
 
                     updatePreview();
                 });
-                container.appendChild(clearXButton);
+                clearContainer.appendChild(clearXButton);
             }
 
             // Lógica para 256
@@ -760,19 +897,36 @@
 
             function setupCopyButton() {
                 copyButton.addEventListener('click', async () => {
-                    let codeToCopy = '';
+                    // Seleccionar el código visible para copiar
+                    let codeToCopyElement;
                     if (state.language === 'java') {
-                        codeToCopy = generatedCodeJava.textContent;
+                        codeToCopyElement = generatedCodeJava;
                     } else {
-                        codeToCopy = generatedCodePython.textContent;
+                        codeToCopyElement = generatedCodePython;
                     }
+                    const codeToCopy = codeToCopyElement.textContent;
                     
                     try {
+                        // Intenta con la API moderna (asíncrona)
                         await navigator.clipboard.writeText(codeToCopy);
                         copyButton.textContent = '¡Copiado!';
                     } catch (err) {
-                        copyButton.textContent = 'Error al Copiar';
-                        console.error('Error al copiar el texto: ', err);
+                        // Fallback: Intenta con el método obsoleto (sincrónico)
+                        try {
+                            const tempTextArea = document.createElement('textarea');
+                            tempTextArea.value = codeToCopy;
+                            // Coloca el textarea fuera de la vista para evitar el desplazamiento
+                            tempTextArea.style.position = 'fixed';
+                            tempTextArea.style.left = '-9999px'; 
+                            document.body.appendChild(tempTextArea);
+                            tempTextArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(tempTextArea);
+                            copyButton.textContent = '¡Copiado!';
+                        } catch (fallbackErr) {
+                            copyButton.textContent = 'Error al Copiar';
+                            console.error('Error al copiar el texto: ', fallbackErr);
+                        }
                     }
                     
                     setTimeout(() => {
@@ -809,8 +963,9 @@
             
             // --- Arranque ---
             setupStyleControls();
-            createColorPalette(fgColorContainer, 'fg');
-            createColorPalette(bgColorContainer, 'bg');
+            // Pasar el contenedor del botón 'X' a la función
+            createColorPalette(fgColorContainer, fgClearContainer, 'fg');
+            createColorPalette(bgColorContainer, bgClearContainer, 'bg');
             setupLanguageSelector();
             setupCopyButton();
             setupAsciiExplorer();
