@@ -343,7 +343,6 @@
             const bgRgbPreview = document.getElementById('bg-rgb-preview');
             const bgRgbApply = document.getElementById('bg-rgb-apply');
 
-
             // --- Lógica del Selector de Color (HSV <-> RGB <-> Hex) ---
             
             /**
@@ -520,39 +519,46 @@
                 hueSelector.classList.remove('hidden');
             }
 
-
             /**
-             * Actualiza el selector de color y el estado después de un cambio de RGB manual.
+             * Actualiza el selector de color y el estado después de un cambio de Hex manual.
              */
-            function updateColorFromRgbInput(type) {
-                const currentSelection = type === 'fg' ? state.fg.picker : state.bg.picker;
-                const rEl = type === 'fg' ? fgRgbR : bgRgbR;
-                const gEl = type === 'fg' ? fgRgbG : bgRgbG;
-                const bEl = type === 'fg' ? fgRgbB : bgRgbB;
-
-                let r = parseInt(rEl.value) || 0;
-                let g = parseInt(gEl.value) || 0;
-                let b = parseInt(bEl.value) || 0;
+            function updateColorFromHexInput(type) {
+                const hexEl = type === 'fg' ? fgRgbHex : bgRgbHex;
+                const hexValue = hexEl.value.trim();
                 
-                r = Math.max(0, Math.min(255, r));
-                g = Math.max(0, Math.min(255, g));
-                b = Math.max(0, Math.min(255, b));
+                // FIX: Si el campo está vacío, simplemente salimos para permitir que se borre.
+                if (hexValue.length === 0) {
+                    return;
+                }
+                
+                // FIX: Solo procesar si la longitud es válida para ser un código Hex completo (3, 4, 6 o 7 caracteres).
+                // Esto permite al usuario editar valores parciales (ej. `#8` o `#88888`) sin que la interfaz los sobrescriba.
+                if (![3, 4, 6, 7].includes(hexValue.length)) {
+                    return;
+                }
 
-                rEl.value = r; gEl.value = g; bEl.value = b;
+                const rgb = hexToRgb(hexValue);
 
-                const hsv = rgbToHsv(r, g, b);
+                if (rgb) {
+                    const currentSelection = type === 'fg' ? state.fg.picker : state.bg.picker;
+                    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
 
-                // 1. Actualiza el estado
-                currentSelection.r = r;
-                currentSelection.g = g;
-                currentSelection.b = b;
-                currentSelection.h = hsv.h;
-                currentSelection.s = hsv.s;
-                currentSelection.v = hsv.v;
-
-                // 2. Mueve los selectores y actualiza otros inputs (incluyendo Hex)
-                updateRgbInputs(type, r, g, b); // Esto también actualiza el campo Hex
-                updateSelectorsPosition(type);
+                    // 1. Actualiza el estado
+                    currentSelection.r = rgb.r;
+                    currentSelection.g = rgb.g;
+                    currentSelection.b = rgb.b;
+                    currentSelection.h = hsv.h;
+                    currentSelection.s = hsv.s;
+                    currentSelection.v = hsv.v;
+                    
+                    // Llama a la función de actualización de inputs (incluyendo R, G, B) para sincronizar.
+                    updateRgbInputs(type, rgb.r, rgb.g, rgb.b);
+                    
+                    // Llama a la lógica para mover los selectores
+                    updateSelectorsPosition(type);
+                }
+                // Si el valor Hex es inválido (ej. contiene letras que no son Hex), 'rgb' será null y la función terminará,
+                // dejando el valor inválido visible en el campo de texto hasta que el usuario lo corrija.
             }
             
             /**
@@ -562,6 +568,18 @@
                 const hexEl = type === 'fg' ? fgRgbHex : bgRgbHex;
                 const hexValue = hexEl.value.trim();
                 
+                // FIX 1: Permitir que el campo se vacíe por completo.
+                if (hexValue.length === 0) {
+                    return;
+                }
+                
+                // FIX 2: Solo procesar si la longitud es de un código Hex COMPLETO (6 dígitos o # + 6 dígitos).
+                // Al excluir longitudes 3 y 4, se permite al usuario borrar a través de ellas sin que
+                // se active la lógica de shorthand y se sobrescriba el campo con el color completo (#888888).
+                if (![6, 7].includes(hexValue.length)) {
+                    return;
+                }
+
                 const rgb = hexToRgb(hexValue);
 
                 if (rgb) {
@@ -583,7 +601,6 @@
                     updateSelectorsPosition(type);
                 }
             }
-
 
             /**
              * Procesa la interacción en el selector de color
