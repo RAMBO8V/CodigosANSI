@@ -32,7 +32,7 @@
             visibility: visible;
         }
         /* Custom styling for inputs in dark mode */
-        input[type="number"] {
+        input[type="number"], input[type="text"] { /* Agregado input[type="text"] */
             -moz-appearance: textfield;
             /* Estilo para inputs RGB editables */
             background-color: #1f2937 !important; /* slate-800 o similar */
@@ -171,6 +171,7 @@
                                                 <div class="flex justify-between">R: <input type="number" id="fg-rgb-r" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
                                                 <div class="flex justify-between">G: <input type="number" id="fg-rgb-g" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
                                                 <div class="flex justify-between">B: <input type="number" id="fg-rgb-b" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
+                                                <div class="flex justify-between mt-2">Hex: <input type="text" id="fg-rgb-hex" maxlength="7" placeholder="#RRGGBB" class="w-20 bg-slate-900 rounded px-1 text-center text-white"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -214,6 +215,7 @@
                                                 <div class="flex justify-between">R: <input type="number" id="bg-rgb-r" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
                                                 <div class="flex justify-between">G: <input type="number" id="bg-rgb-g" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
                                                 <div class="flex justify-between">B: <input type="number" id="bg-rgb-b" min="0" max="255" class="w-10 bg-slate-900 rounded px-1 text-center"></div>
+                                                <div class="flex justify-between mt-2">Hex: <input type="text" id="bg-rgb-hex" maxlength="7" placeholder="#RRGGBB" class="w-20 bg-slate-900 rounded px-1 text-center text-white"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -234,13 +236,15 @@
                            <h3 class="text-lg font-semibold text-white mb-2">Código Generado</h3>
                             
                             <div id="language-selector" class="flex mb-3 space-x-2 p-1 bg-slate-700 rounded-lg">
-                                <button data-lang="java" class="w-1/2 text-sm px-3 py-1 rounded-md bg-blue-600">Java</button>
-                                <button data-lang="python" class="w-1/2 text-sm px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600">Python</button>
+                                <button data-lang="java" class="w-1/3 text-sm px-3 py-1 rounded-md bg-blue-600">Java</button>
+                                <button data-lang="python" class="w-1/3 text-sm px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600">Python</button>
+                                <button data-lang="html" class="w-1/3 text-sm px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600">HTML</button>
                             </div>
                             
                             <div class="bg-black rounded-lg p-4 flex-grow relative">
                                 <pre><code id="generated-code-java" class="font-mono text-sm whitespace-pre-wrap"></code></pre>
                                 <pre><code id="generated-code-python" class="font-mono text-sm whitespace-pre-wrap hidden"></code></pre>
+                                <pre><code id="generated-code-html" class="font-mono text-sm whitespace-pre-wrap hidden"></code></pre>
                                 <button id="copy-button" class="mt-3 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-2 py-1 rounded-md float-right">Copiar</button>
                             </div>
                         </div>
@@ -267,7 +271,6 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             // --- Estado de la aplicación ---
-            // CORRECCIÓN: Inicializar RGB a un gris neutro para evitar problemas con hsvToRgb(0, 0, 0)
             const state = {
                 styles: new Set(),
                 fg: { mode: 'basic', params: null, picker: { h: 0, s: 0, v: 0.5, r: 128, g: 128, b: 128 } },
@@ -308,6 +311,7 @@
             // Selectores de códigos
             const generatedCodeJava = document.getElementById('generated-code-java');
             const generatedCodePython = document.getElementById('generated-code-python');
+            const generatedCodeHtml = document.getElementById('generated-code-html'); // NUEVO
             
             // RGB/256 Elements
             const fg256Input = document.getElementById('fg-256-input');
@@ -323,6 +327,7 @@
             const fgRgbR = document.getElementById('fg-rgb-r');
             const fgRgbG = document.getElementById('fg-rgb-g');
             const fgRgbB = document.getElementById('fg-rgb-b');
+            const fgRgbHex = document.getElementById('fg-rgb-hex'); // NUEVO
             const fgRgbPreview = document.getElementById('fg-rgb-preview');
             const fgRgbApply = document.getElementById('fg-rgb-apply');
 
@@ -334,11 +339,41 @@
             const bgRgbR = document.getElementById('bg-rgb-r');
             const bgRgbG = document.getElementById('bg-rgb-g');
             const bgRgbB = document.getElementById('bg-rgb-b');
+            const bgRgbHex = document.getElementById('bg-rgb-hex'); // NUEVO
             const bgRgbPreview = document.getElementById('bg-rgb-preview');
             const bgRgbApply = document.getElementById('bg-rgb-apply');
 
 
-            // --- Lógica del Selector de Color (HSV <-> RGB) ---
+            // --- Lógica del Selector de Color (HSV <-> RGB <-> Hex) ---
+            
+            /**
+             * Convierte RGB (0-255) a Hex (#RRGGBB)
+             */
+            function rgbToHex(r, g, b) {
+                const componentToHex = (c) => {
+                    const hex = c.toString(16);
+                    return hex.length === 1 ? "0" + hex : hex;
+                };
+                return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+            }
+
+            /**
+             * Convierte Hex (#RRGGBB) a RGB (0-255)
+             */
+            function hexToRgb(hex) {
+                // Eliminar el # si está presente
+                const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+                hex = hex.replace(shorthandRegex, function(m, r, g, b) {
+                    return r + r + g + g + b + b;
+                });
+                
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            }
 
             /**
              * Convierte HSV (0-360, 0-1, 0-1) a RGB (0-255)
@@ -433,15 +468,15 @@
 
                 // 2. Dibuja el gradiente de Saturación (Blanco a Tono)
                 const saturationGradient = ctx.createLinearGradient(0, 0, width, 0);
-                saturationGradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); // Blanco
-                saturationGradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Transparente
+                saturationGradient.addColorStop(0, 'rgba(255, 255, 255, 1)'); // Blanco (Baja Saturación)
+                saturationGradient.addColorStop(1, 'rgba(255, 255, 255, 0)'); // Transparente (Alta Saturación)
                 ctx.fillStyle = saturationGradient;
                 ctx.fillRect(0, 0, width, height);
                 
                 // 3. Dibuja el gradiente de Valor/Brillo (Negro)
                 const valueGradient = ctx.createLinearGradient(0, height, 0, 0);
-                valueGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Negro
-                valueGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparente
+                valueGradient.addColorStop(0, 'rgba(0, 0, 0, 1)'); // Negro (Bajo Valor/Brillo)
+                valueGradient.addColorStop(1, 'rgba(0, 0, 0, 0)'); // Transparente (Alto Valor/Brillo)
                 ctx.fillStyle = valueGradient;
                 ctx.fillRect(0, 0, width, height);
             }
@@ -456,6 +491,37 @@
             }
             
             /**
+             * Mueve los selectores de color (S/V y H) a la posición correspondiente al estado actual (H, S, V).
+             */
+            function updateSelectorsPosition(type) {
+                const currentSelection = type === 'fg' ? state.fg.picker : state.bg.picker;
+                const colorCanvas = type === 'fg' ? fgColorCanvas : bgColorCanvas;
+                const hueCanvas = type === 'fg' ? fgHueCanvas : bgHueCanvas;
+                const colorSelector = type === 'fg' ? fgColorSelector : bgColorSelector;
+                const hueSelector = type === 'fg' ? fgHueSelector : bgHueSelector;
+
+                // Redibuja el campo de color (S/V) basado en el nuevo H
+                drawColorField(colorCanvas, currentSelection.h);
+
+                // Mueve los selectores
+                // CORRECCIÓN PARA INVERSIÓN HORIZONTAL: 
+                // La Saturación (S) va de 0 (izquierda) a 1 (derecha), por lo tanto, la posición X es S * Width.
+                const colorX = currentSelection.s * colorCanvas.width;
+                
+                // El gradiente de Valor/Brillo (V) va de 1 (arriba) a 0 (abajo), por lo que 1-V es correcto.
+                const colorY = (1 - currentSelection.v) * colorCanvas.height; 
+                const hueY = (currentSelection.h / 360) * hueCanvas.height;
+                
+                colorSelector.style.left = `${colorX}px`;
+                colorSelector.style.top = `${colorY}px`;
+                colorSelector.classList.remove('hidden');
+
+                hueSelector.style.top = `${hueY}px`;
+                hueSelector.classList.remove('hidden');
+            }
+
+
+            /**
              * Actualiza el selector de color y el estado después de un cambio de RGB manual.
              */
             function updateColorFromRgbInput(type) {
@@ -463,10 +529,6 @@
                 const rEl = type === 'fg' ? fgRgbR : bgRgbR;
                 const gEl = type === 'fg' ? fgRgbG : bgRgbG;
                 const bEl = type === 'fg' ? fgRgbB : bgRgbB;
-                const colorCanvas = type === 'fg' ? fgColorCanvas : bgColorCanvas;
-                const hueCanvas = type === 'fg' ? fgHueCanvas : bgHueCanvas;
-                const colorSelector = type === 'fg' ? fgColorSelector : bgColorSelector;
-                const hueSelector = type === 'fg' ? fgHueSelector : bgHueSelector;
 
                 let r = parseInt(rEl.value) || 0;
                 let g = parseInt(gEl.value) || 0;
@@ -488,24 +550,40 @@
                 currentSelection.s = hsv.s;
                 currentSelection.v = hsv.v;
 
-                // 2. Redibuja el campo de color (S/V) basado en el nuevo H
-                drawColorField(colorCanvas, hsv.h);
-
-                // 3. Mueve los selectores
-                const colorX = (1 - hsv.s) * colorCanvas.width;
-                const colorY = (1 - hsv.v) * colorCanvas.height;
-                const hueY = (hsv.h / 360) * hueCanvas.height;
-                
-                colorSelector.style.left = `${colorX}px`;
-                colorSelector.style.top = `${colorY}px`;
-                colorSelector.classList.remove('hidden');
-
-                hueSelector.style.top = `${hueY}px`;
-                hueSelector.classList.remove('hidden');
-
-                // 4. Actualiza la vista previa
-                updateRgbInputs(type, r, g, b);
+                // 2. Mueve los selectores y actualiza otros inputs (incluyendo Hex)
+                updateRgbInputs(type, r, g, b); // Esto también actualiza el campo Hex
+                updateSelectorsPosition(type);
             }
+            
+            /**
+             * Actualiza el selector de color y el estado después de un cambio de Hex manual.
+             */
+            function updateColorFromHexInput(type) {
+                const hexEl = type === 'fg' ? fgRgbHex : bgRgbHex;
+                const hexValue = hexEl.value.trim();
+                
+                const rgb = hexToRgb(hexValue);
+
+                if (rgb) {
+                    const currentSelection = type === 'fg' ? state.fg.picker : state.bg.picker;
+                    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+
+                    // 1. Actualiza el estado
+                    currentSelection.r = rgb.r;
+                    currentSelection.g = rgb.g;
+                    currentSelection.b = rgb.b;
+                    currentSelection.h = hsv.h;
+                    currentSelection.s = hsv.s;
+                    currentSelection.v = hsv.v;
+                    
+                    // Llama a la función de actualización de inputs (incluyendo R, G, B) para sincronizar.
+                    updateRgbInputs(type, rgb.r, rgb.g, rgb.b);
+                    
+                    // Llama a la lógica para mover los selectores
+                    updateSelectorsPosition(type);
+                }
+            }
+
 
             /**
              * Procesa la interacción en el selector de color
@@ -536,19 +614,16 @@
 
                     // Si el selector S/V está visible, recalcular RGB a partir del nuevo H, S, V
                     if (!colorSelector.classList.contains('hidden')) {
-                         const colorX = parseFloat(colorSelector.style.left);
-                         const colorY = parseFloat(colorSelector.style.top);
-                         // Recalcular S y V (posición en el nuevo canvas de color)
-                         currentSelection.s = 1 - (colorX / colorCanvas.width);
-                         currentSelection.v = 1 - (colorY / colorCanvas.height);
-
+                         // Aquí no necesitamos recalcular S y V de la posición del selector,
+                         // solo necesitamos los valores R, G, B del nuevo H, manteniendo S y V.
+                         
                          const rgb = hsvToRgb(currentSelection.h / 360, currentSelection.s, currentSelection.v);
                          currentSelection.r = rgb.r;
                          currentSelection.g = rgb.g;
                          currentSelection.b = rgb.b;
 
                     } else {
-                        // Si no hay selector S/V activo, forzar a la esquina superior derecha (S=1, V=1)
+                        // Si no hay selector S/V activo, forzar a S=1, V=1 para obtener el color puro del nuevo H
                         currentSelection.s = 1; currentSelection.v = 1;
                         const rgb = hsvToRgb(currentSelection.h / 360, 1, 1);
                         currentSelection.r = rgb.r;
@@ -568,19 +643,27 @@
                     x = Math.max(0, Math.min(x, colorCanvas.width));
                     y = Math.max(0, Math.min(y, colorCanvas.height));
                     
+                    // Obtener el color del pixel clicado
                     const rgb = getColorFromCanvas(colorCanvas, x, y);
 
-                    // Actualiza el estado con S y V (manteniendo H)
-                    currentSelection.s = 1 - (x / colorCanvas.width);
-                    currentSelection.v = 1 - (y / colorCanvas.height);
+                    // Recalcular el HSV exacto
+                    const hsv = rgbToHsv(rgb.r, rgb.g, rgb.b); 
+                    
+                    // Actualiza el estado con los nuevos valores de color
+                    currentSelection.h = hsv.h; 
+                    currentSelection.s = hsv.s; 
+                    currentSelection.v = hsv.v; 
                     currentSelection.r = rgb.r;
                     currentSelection.g = rgb.g;
                     currentSelection.b = rgb.b;
                     
-                    // Mueve el selector de S/V
+                    // Mueve el selector de S/V a las coordenadas del mouse (x, y)
                     selector.style.left = `${x}px`;
                     selector.style.top = `${y}px`;
                     selector.classList.remove('hidden');
+                    
+                    // Mueve los selectores de H (y fuerza S/V a moverse si hubo un arrastre horizontal)
+                    updateSelectorsPosition(type);
 
                 }
                 
@@ -634,30 +717,37 @@
                 const rEl = type === 'fg' ? fgRgbR : bgRgbR;
                 const gEl = type === 'fg' ? fgRgbG : bgRgbG;
                 const bEl = type === 'fg' ? fgRgbB : bgRgbB;
+                const hexEl = type === 'fg' ? fgRgbHex : bgRgbHex; // NUEVO
 
                 [rEl, gEl, bEl].forEach(el => {
                     el.addEventListener('input', () => {
-                         // Llamar a una función que recalcule HSV y mueva los selectores
                         updateColorFromRgbInput(type);
                     });
                 });
                 
+                // NUEVO: Listener para Hex
+                hexEl.addEventListener('input', () => {
+                     updateColorFromHexInput(type);
+                });
+                
                 // Inicializar los selectores de posición
-                updateColorFromRgbInput(type);
+                updateSelectorsPosition(type);
             }
             
             /**
-             * Actualiza los inputs de RGB y la pequeña preview box.
+             * Actualiza los inputs de RGB y la pequeña preview box, incluyendo Hex.
              */
             function updateRgbInputs(type, r, g, b) {
                 const rEl = type === 'fg' ? fgRgbR : bgRgbR;
                 const gEl = type === 'fg' ? fgRgbG : bgRgbG;
                 const bEl = type === 'fg' ? fgRgbB : bgRgbB;
+                const hexEl = type === 'fg' ? fgRgbHex : bgRgbHex; // NUEVO
                 const previewEl = type === 'fg' ? fgRgbPreview : bgRgbPreview;
 
                 rEl.value = r;
                 gEl.value = g;
                 bEl.value = b;
+                hexEl.value = rgbToHex(r, g, b).toUpperCase(); // NUEVO: Actualiza Hex
                 previewEl.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
             }
 
@@ -695,25 +785,65 @@
                     generatedCodePython.textContent = '# Sin parámetros ANSI seleccionados\nprint("Hola, Mundo ANSI!")';
                 }
                 
+                // NUEVO: Generación de código HTML
+                const fgParams = state.fg.params ? state.fg.params.split(';') : [];
+                const bgParams = state.bg.params ? state.bg.params.split(';') : [];
+                const styles = [...state.styles];
+                
+                let cssStyle = '';
+                
+                // 1. Estilos de texto
+                if (styles.includes('1')) cssStyle += 'font-weight: bold; ';
+                if (styles.includes('3')) cssStyle += 'font-style: italic; ';
+                if (styles.includes('4')) cssStyle += 'text-decoration: underline; ';
+                if (styles.includes('9')) cssStyle += 'text-decoration: line-through; ';
+                
+                // 2. Colores (True Color RGB 24-bit)
+                let fgCss = '';
+                if (fgParams[0] === '38' && fgParams[1] === '2') {
+                    fgCss = `rgb(${fgParams[2]}, ${fgParams[3]}, ${fgParams[4]})`;
+                    cssStyle += `color: ${fgCss}; `;
+                }
+                
+                let bgCss = '';
+                if (bgParams[0] === '48' && bgParams[1] === '2') {
+                    bgCss = `rgb(${bgParams[2]}, ${bgParams[3]}, ${bgParams[4]})`;
+                    cssStyle += `background-color: ${bgCss}; `;
+                }
+                
+                // Mensaje de nota si no es True Color
+                const note = (fgCss === '' && fgParams.length > 0) || (bgCss === '' && bgParams.length > 0) 
+                    ? ''
+                    : '';
+
+                if (allParams.length > 0) {
+                    const htmlCode = `<span style="${cssStyle.trim()}">Hola, Mundo ANSI!</span>`;
+                    generatedCodeHtml.textContent = 
+                        `${note}\n<div style="font-family: monospace; background-color: black; padding: 5px; color: #ccc;">\n    ${htmlCode}\n</div>`;
+                } else {
+                    generatedCodeHtml.textContent = '// Sin estilos seleccionados\n<span>Hola, Mundo ANSI!</span>';
+                }
+
                 updateLanguageView();
             }
             
             function updateLanguageView() {
-                if (state.language === 'java') {
-                    generatedCodeJava.classList.remove('hidden');
-                    generatedCodePython.classList.add('hidden');
-                    languageSelector.querySelector('[data-lang="java"]').classList.add('bg-blue-600', 'hover:bg-blue-700');
-                    languageSelector.querySelector('[data-lang="java"]').classList.remove('bg-slate-700', 'hover:bg-slate-600');
-                    languageSelector.querySelector('[data-lang="python"]').classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                    languageSelector.querySelector('[data-lang="python"]').classList.add('bg-slate-700', 'hover:bg-slate-600');
-                } else {
-                    generatedCodePython.classList.remove('hidden');
-                    generatedCodeJava.classList.add('hidden');
-                    languageSelector.querySelector('[data-lang="python"]').classList.add('bg-blue-600', 'hover:bg-blue-700');
-                    languageSelector.querySelector('[data-lang="python"]').classList.remove('bg-slate-700', 'hover:bg-slate-600');
-                    languageSelector.querySelector('[data-lang="java"]').classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                    languageSelector.querySelector('[data-lang="java"]').classList.add('bg-slate-700', 'hover:bg-slate-600');
-                }
+                const languages = ['java', 'python', 'html']; // NUEVO: Incluir HTML
+                
+                languages.forEach(lang => {
+                    const codeEl = document.getElementById(`generated-code-${lang}`);
+                    const buttonEl = languageSelector.querySelector(`[data-lang="${lang}"]`);
+                    
+                    if (lang === state.language) {
+                        codeEl.classList.remove('hidden');
+                        buttonEl.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        buttonEl.classList.remove('bg-slate-700', 'hover:bg-slate-600');
+                    } else {
+                        codeEl.classList.add('hidden');
+                        buttonEl.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                        buttonEl.classList.add('bg-slate-700', 'hover:bg-slate-600');
+                    }
+                });
             }
 
             function clearBasicSelection(type) {
@@ -869,8 +999,9 @@
                 const {r, g, b} = state.fg.picker;
                 const base = 38;
                 const params = `${base};2;${r};${g};${b}`;
-                handleAdvancedColor('fg', 'rgb', {r, g, b}); // Llama a la función, aunque reusamos la lógica de generación
                 state.fg.params = params;
+                // No se llama a handleAdvancedColor aquí porque no resetea la UI del RGB picker
+                clearBasicSelection('fg');
                 updatePreview();
             });
 
@@ -878,8 +1009,8 @@
                 const {r, g, b} = state.bg.picker;
                 const base = 48;
                 const params = `${base};2;${r};${g};${b}`;
-                handleAdvancedColor('bg', 'rgb', {r, g, b}); // Llama a la función, aunque reusamos la lógica de generación
                 state.bg.params = params;
+                clearBasicSelection('bg');
                 updatePreview();
             });
             
@@ -898,12 +1029,7 @@
             function setupCopyButton() {
                 copyButton.addEventListener('click', async () => {
                     // Seleccionar el código visible para copiar
-                    let codeToCopyElement;
-                    if (state.language === 'java') {
-                        codeToCopyElement = generatedCodeJava;
-                    } else {
-                        codeToCopyElement = generatedCodePython;
-                    }
+                    let codeToCopyElement = document.getElementById(`generated-code-${state.language}`);
                     const codeToCopy = codeToCopyElement.textContent;
                     
                     try {
